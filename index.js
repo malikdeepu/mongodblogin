@@ -42,7 +42,7 @@ app.post("/signup", async (req, res) => {
       user: { username: user.username, email: user.email },
     });
   } catch (err) {
-    if (err.code === 11000) {
+    if  {
       res.send({ message: "Username or email already exists" });
     } else {
       res.send({ message: "Error creating user" });
