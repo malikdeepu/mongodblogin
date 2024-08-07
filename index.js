@@ -1,7 +1,7 @@
 const mongoose = require("mongoose");
 const express = require("express");
 const app = express();
-const port = 3000;
+const port = 3100;
 
 app.use(express.json());
 
@@ -33,7 +33,7 @@ const userSchema = new mongoose.Schema({
   },
   purchasedProducts: [
     {
-      productid: {
+      proid: {
         type: String,
         required: true,
       },
@@ -50,7 +50,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const productSchema = new mongoose.Schema({
-  productid: {
+  proid: {
     type: String,
     required: true,
     unique: true,
@@ -81,15 +81,20 @@ app.post("/signup", async (req, res) => {
   res.json({
     message: "User Created Successfully",
     username,
+    email,
+    password,
   });
 });
 
 app.post("/login", async (req, res) => {
-  const { email, password } = req.body;
-  const logon = await User.findOne({ email, password });
-  if (logon) {
+  const { username, password } = req.body;
+  const login = await User.findOne({ username, password });
+  if (login) {
     res.json({
       message: "Login Successfully",
+      username,
+      password,
+      email,
     });
   } else {
     res.json({
@@ -99,26 +104,28 @@ app.post("/login", async (req, res) => {
 });
 
 app.post("/addproduct", async (req, res) => {
-  const { productid, title, price } = req.body;
+  const { proid, title, price } = req.body;
 
-  const existProduct = await Product.findOne({ productid });
+  const existProduct = await Product.findOne({ proid });
   if (existProduct) {
     res.send({
       message: "Product already added",
     });
   } else {
-    const product = new Product({ productid, title, price });
+    const product = new Product({ proid, title, price });
     await product.save();
     res.json({
       message: "Product added successfully",
-      productid,
+      proid,
+      title,
+      price,
     });
   }
 });
 
 app.post("/peruserpurchaseproduct", async (req, res) => {
-  const { email, password, productid } = req.body;
-  const user = await User.findOne({ email, password });
+  const { username, password, proid } = req.body;
+  const user = await User.findOne({ username, password });
 
   if (!user) {
     return res.json({
@@ -126,7 +133,7 @@ app.post("/peruserpurchaseproduct", async (req, res) => {
     });
   }
 
-  const product = await Product.findOne({ productid });
+  const product = await Product.findOne({ proid });
   if (product) {
     user.purchasedProducts.push(product);
     await user.save();
