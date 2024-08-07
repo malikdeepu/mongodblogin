@@ -1,115 +1,146 @@
-const express = require("express");
 const mongoose = require("mongoose");
-
+const express = require("express");
 const app = express();
+const port = 3000;
+
 app.use(express.json());
 
 mongoose
   .connect(
     "mongodb+srv://deepanshumaik:malik123@cluster0.h0gcnnu.mongodb.net/usersignuplogin"
   )
-  .then(() => console.log("Connected to MongoDB!"))
-  .catch((err) => console.error("Connection error", err));
+  .then(() => {
+    console.log("Connected to MongoDB");
+  })
+  .catch((err) => {
+    console.log("Error: ", err);
+  });
 
 const userSchema = new mongoose.Schema({
-  username: { type: String },
-  password: { type: String },
-  email: { type: String },
-  purchasedproducts: [{ type: String }],
+  username: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  password: {
+    type: String,
+    required: true,
+  },
+  email: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  purchasedProducts: [
+    {
+      productid: {
+        type: String,
+        required: true,
+      },
+      title: {
+        type: String,
+        required: true,
+      },
+      price: {
+        type: String,
+        required: true,
+      },
+    },
+  ],
 });
 
 const productSchema = new mongoose.Schema({
-  proid: String,
-
-  product: String,
-  rate: String,
-  details: String,
-  review: String,
+  productid: {
+    type: String,
+    required: true,
+    unique: true,
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  price: {
+    type: String,
+    required: true,
+  },
 });
 
 const User = mongoose.model("User", userSchema);
 const Product = mongoose.model("Product", productSchema);
 
 app.post("/signup", async (req, res) => {
-  const { username, password, email } = req.body;
-  const user = new User({ username, password, email });
+  const { username, email, password } = req.body;
 
-  try {
+  const existUser = await User.findOne({ username, email });
+  if (existUser) {
+    return res.json({ message: "Username or email already exist" });
+  } else {
+    const user = new User({ username, email, password });
     await user.save();
-    console.log("User created:", user);
-    res.send({
-      message: "User created successfully",
-      user: { username: user.username, email: user.email },
-    });
-  } catch (err) {
-    if  {
-      res.send({ message: "Username or email already exists" });
-    } else {
-      res.send({ message: "Error creating user" });
-    }
   }
+  res.json({
+    message: "User Created Successfully",
+    username,
+  });
 });
 
 app.post("/login", async (req, res) => {
-  const { username, password } = req.body;
-
-  try {
-    const user = await User.findOne({ username });
-    if (!user || user.password !== password) {
-      return res.send({ message: "Invalid username or password" });
-    }
-
-    console.log("User logged in:", user);
-    res.send({
-      message: "User logged in successfully",
-      user: { username: user.username, email: user.email },
+  const { email, password } = req.body;
+  const logon = await User.findOne({ email, password });
+  if (logon) {
+    res.json({
+      message: "Login Successfully",
     });
-  } catch (err) {
-    res.send({ message: "Error logging in" });
+  } else {
+    res.json({
+      message: "Invalid email or password",
+    });
   }
 });
 
-app.post("/products", async (req, res) => {
-  const { proid, product, rate, details, review } = req.body;
-  const newProduct = new Product({
-    proid,
-    product,
-    rate,
-    details,
-    review,
-  });
+app.post("/addproduct", async (req, res) => {
+  const { productid, title, price } = req.body;
 
-  try {
-    await newProduct.save();
-    res.send(newProduct);
-  } catch (err) {
-    res.send({ message: "Error adding product" });
+  const existProduct = await Product.findOne({ productid });
+  if (existProduct) {
+    res.send({
+      message: "Product already added",
+    });
+  } else {
+    const product = new Product({ productid, title, price });
+    await product.save();
+    res.json({
+      message: "Product added successfully",
+      productid,
+    });
   }
 });
 
-app.post("/peruserpurchased", async (req, res) => {
-  const { username, password, proid } = req.body;
+app.post("/peruserpurchaseproduct", async (req, res) => {
+  const { email, password, productid } = req.body;
+  const user = await User.findOne({ email, password });
 
-  try {
-    const user = await User.findOne({ username, password });
-    if (!user) {
-      return res.send({ message: "Login failed" });
-    }
+  if (!user) {
+    return res.json({
+      message: "User Not found",
+    });
+  }
 
-    const product = await Product.findOne({ proid });
-    if (!product) {
-      return res.send({ message: "Product not found" });
-    }
-
-    user.purchasedproducts.push(product._id);
+  const product = await Product.findOne({ productid });
+  if (product) {
+    user.purchasedProducts.push(product);
     await user.save();
-    res.json(user);
-  } catch (err) {
-    res.send({ message: "Error adding purchased product" });
+    return res.json({
+      message: "Purchased Successfully",
+      product,
+    });
+  } else {
+    return res.send({
+      message: "Wrong ProductId or Email",
+    });
   }
 });
 
-const PORT = process.PORT || 3100;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`);
 });
